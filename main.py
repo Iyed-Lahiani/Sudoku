@@ -1,68 +1,55 @@
-from typing import List
-import random
-import time
+import pygame
+import sys
+from GUI import*
 
-def solve(board:List[List[int]]):
-    n=len(board)
-    if backtrack(n,board):
-        return board
-    return None
-    
-    
-    
-def isValid(row,col,num,board):
-    for i in range(len(board)):
-        if board[row][i]==num or board[i][col]==num:
-            return False
-    starRow = 3*(row//3)
-    startCol = 3*(col//3)
-    for i in range(3):
-        for j in range(3):
-            if(board[starRow+i][startCol+j]==num):
-                return False
-    return True
-    
-def backtrack(n,board):
-    for row in range(n):
-        for col in range(n):
-            if board[row][col] == 0:
-                numbers = list(range(1, n + 1))
-                random.shuffle(numbers)
-                for num in numbers:
-                    if isValid(row, col, num, board):
-                        board[row][col] = num
-                        if backtrack(n, board):
-                            return True
-                        board[row][col] = 0
-                return False
-    return True
-
-def generate(n):
-    board= [[0 for i in range(n)] for j in range(n)]
-    solve(board)
-    return board
-
-def empytCells(board):
-    n=len(board)
-    filled_cells=random.randint(15,20)
-    for i in range ((n*n)-filled_cells):
-        row = random.randint(0,n-1)
-        col = random.randint(0,n-1)
-        board[row][col]=0
-    return board
-
-
-
-
-board = empytCells(generate(9))
-for row in board:
+pygame.init()
+font =pygame.font.Font(None,36)
+grid=Grid()
+screen=pygame.display.set_mode((grid.width,grid.height))
+pygame.display.set_caption("Sudoku")
+selected_cell=None
+won=False
+usedSolver=False
+gametTime=""
+startTime = time.time()
+endTime=None
+for row in grid.solvedBoard:
     print(row)
-time.sleep(1)
-print(" ")
-print("Waiting for Solution...")
-print(" ")
-time.sleep(2)
-print("Solution:")
-board=solve(board)
-for row in board:
-    print(row)
+while True:
+    pos=None
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            pos=pygame.mouse.get_pos()
+            selected_cell_x=(pos[0])//grid.cellSize
+            selected_cell_y=(pos[1])//grid.cellSize
+            if 0<=selected_cell_x<9 and 0<=selected_cell_y<9 and grid.cells[selected_cell_y][selected_cell_x].changeable:
+                selected_cell = grid.cells[selected_cell_y][selected_cell_x]
+                selected_cell.highlightCell(screen,grid.cellSize,BLUE)
+        elif event.type == pygame.KEYDOWN and selected_cell is not None:
+            if event.unicode.isdigit() and 1<= int(event.unicode) <= 9:
+                selected_cell.value=int(event.unicode)
+                selected_cell=None
+                won = grid.checkWin()
+                if won :
+                    seconds=endTime%60
+                    minutes=endTime//60
+                    gametTime = f"{minutes} minutes and {seconds} seconds"
+            if event.key == pygame.K_SPACE:
+                usedSolver=True
+
+    screen.fill(WHITE)
+    grid.drawLines(screen)
+    grid.drawNumbers(screen)
+    endTime=grid.drawTime(startTime,screen)
+    if selected_cell is not None:
+        selected_cell.highlightCell(screen,grid.cellSize,BLUE)
+    if won:
+        grid.displayWin(screen,font,gametTime)
+    if usedSolver:
+        for row in grid.cells :
+            grid.solveWithAnimation(screen,row)
+        break
+    pygame.display.update()
